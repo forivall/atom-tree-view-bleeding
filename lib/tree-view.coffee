@@ -14,6 +14,7 @@ Minimatch = null  # Defer requiring until actually needed
 Directory = require './directory'
 DirectoryView = require './directory-view'
 FileView = require './file-view'
+ProjectFolderDragAndDropHandler = require './project-folder-dnd-handler'
 LocalStorage = window.localStorage
 
 toggleConfig = (keyPath) ->
@@ -38,6 +39,7 @@ class TreeView extends View
     @selectedPath = null
     @ignoredPatterns = []
 
+    @projectFolderDragAndDropHandler = new ProjectFolderDragAndDropHandler(this)
     @handleEvents()
 
     process.nextTick =>
