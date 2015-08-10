@@ -5,7 +5,7 @@ fs = require 'fs-plus'
 PathWatcher = require 'pathwatcher'
 NaturalSort = require 'javascript-natural-sort'
 File = require './file'
-{repoForPath} = require './helpers'
+{repoForPath, getRepoCacheSize} = require './helpers'
 
 realpathCache = {}
 
@@ -18,6 +18,10 @@ class Directory
 
     @path = fullPath
     @realPath = @path
+    @repo = repoForPath(@path)
+    if @repo and atom.config.get('tree-view.refreshVcsStatusOnProjectOpen') >= getRepoCacheSize()
+      @refreshRepoStatus()
+
     if fs.isCaseInsensitive()
       @lowerCasePath = @path.toLowerCase()
       @lowerCaseRealPath = @lowerCasePath
@@ -29,7 +33,7 @@ class Directory
     @status = null
     @entries = {}
 
-    @submodule = repoForPath(@path)?.isSubmodule(@path)
+    @submodule = @repo?.isSubmodule(@path)
 
     @subscribeToRepo()
     @updateStatus()
@@ -61,26 +65,38 @@ class Directory
         @lowerCaseRealPath = @realPath.toLowerCase() if fs.isCaseInsensitive()
         @updateStatus()
 
+  refreshRepoStatus: ->
+    return unless @repo?
+
+    @repo.refreshIndex()
+    @repo.refreshStatus()
+
   # Subscribe to project's repo for changes to the Git status of this directory.
   subscribeToRepo: ->
-    repo = repoForPath(@path)
-    return unless repo?
+    return unless @repo?
 
-    @subscriptions.add repo.onDidChangeStatus (event) =>
-      @updateStatus(repo) if @contains(event.path)
-    @subscriptions.add repo.onDidChangeStatuses =>
-      @updateStatus(repo)
+    @subscriptions.add @repo.onDidChangeStatus (event) =>
+      @updateStatus(@repo) if @contains(event.path)
+    @subscriptions.add @repo.onDidChangeStatuses =>
+      @updateStatus(@repo)
 
   # Update the status property of this directory using the repo.
-  updateStatus: ->
-    repo = repoForPath(@path)
+  updateStatus: (repo) ->
+    repo ?= @repo
     return unless repo?
 
     newStatus = null
     if repo.isPathIgnored(@path)
       newStatus = 'ignored'
     else
-      status = repo.getDirectoryStatus(@path)
+      status = null
+      unless repo.relativize(@path + '/')
+        # repo root directory
+        for _path, _status of repo.statuses
+          status |= _status
+      else
+        status = repo.getDirectoryStatus(@path)
+
       if repo.isStatusModified(status)
         newStatus = 'modified'
       else if repo.isStatusNew(status)
@@ -93,8 +109,7 @@ class Directory
   # Is the given path ignored?
   isPathIgnored: (filePath) ->
     if atom.config.get('tree-view.hideVcsIgnoredFiles')
-      repo = repoForPath(@path)
-      return true if repo? and repo.isProjectAtRoot() and repo.isPathIgnored(filePath)
+      return true if @repo? and @repo.isProjectAtRoot() and @repo.isPathIgnored(filePath)
 
     if atom.config.get('tree-view.hideIgnoredNames')
       for ignoredPattern in @ignoredPatterns
@@ -247,6 +262,7 @@ class Directory
   # changes.
   expand: ->
     @expansionState.isExpanded = true
+    @refreshRepoStatus()
     @reload()
     @watch()
 

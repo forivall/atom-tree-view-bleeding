@@ -1,5 +1,6 @@
 {CompositeDisposable} = require 'event-kit'
 path = require 'path'
+helpers = require './helpers'
 
 module.exports =
   config:
@@ -16,6 +17,19 @@ module.exports =
     sortFoldersBeforeFiles:
       type: 'boolean'
       default: true
+    refreshVcsStatusOnFocusChange:
+      title: "Refresh VCS Status On Focus Change for first N repos it met"
+      type: 'integer'
+      default: 1
+      description: "Refresh VCS Status when focus of Atom editor changes of first N repos. \
+                    In case of many nested repos Atom can be freezing, so consider this value to be low."
+
+    refreshVcsStatusOnProjectOpen:
+      title: "Refresh VCS Status On Project Open for first N repos it met"
+      type: 'integer'
+      default: 10,
+      description: "Refresh VCS Status once Atom project is opened of first N repos. \
+                    Can decrease start-up time if amount of repositories and the option number are high."
 
   treeView: null
 
@@ -36,11 +50,13 @@ module.exports =
       'tree-view:duplicate': => @createView().copySelectedEntry()
       'tree-view:remove': => @createView().removeSelectedEntries()
       'tree-view:rename': => @createView().moveSelectedEntry()
+      'tree-view:refresh-vcs-status': => @createView().refreshVcsStatus()
     })
 
   deactivate: ->
     @disposables.dispose()
     @treeView?.deactivate()
+    helpers.resetRepoCache()
     @treeView = null
 
   serialize: ->
