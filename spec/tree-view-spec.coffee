@@ -19,7 +19,7 @@ clickEvent = (properties) ->
   event
 
 describe "TreeView", ->
-  [treeView, path1, path2, root1, root2, sampleJs, sampleTxt, workspaceElement] = []
+  [treeView, path1, path2, path3, root1, root2, root3, sampleJs, sampleTxt, workspaceElement] = []
 
   selectEntry = (pathToSelect) ->
     treeView.selectEntryForPath atom.project.getDirectories()[0].resolve pathToSelect
@@ -28,7 +28,8 @@ describe "TreeView", ->
     fixturesPath = atom.project.getPaths()[0]
     path1 = path.join(fixturesPath, "root-dir1")
     path2 = path.join(fixturesPath, "root-dir2")
-    atom.project.setPaths([path1, path2])
+    path3 = path.join(fixturesPath, "root-dir3")
+    atom.project.setPaths([path1, path2, path3])
 
     workspaceElement = atom.views.getView(atom.workspace)
 
@@ -41,6 +42,7 @@ describe "TreeView", ->
 
       root1 = $(treeView.roots[0])
       root2 = $(treeView.roots[1])
+      root3 = $(treeView.roots[2])
       sampleJs = treeView.find('.file:contains(tree-view.js)')
       sampleTxt = treeView.find('.file:contains(tree-view.txt)')
 
@@ -143,7 +145,7 @@ describe "TreeView", ->
         runs ->
           treeView = atom.packages.getActivePackage("tree-view").mainModule.createView()
           expect(treeView.hasParent()).toBeFalsy()
-          expect(treeView.roots).toHaveLength(2)
+          expect(treeView.roots).toHaveLength(3)
 
     describe "when the root view is opened to a directory", ->
       it "attaches to the workspace", ->
@@ -153,7 +155,7 @@ describe "TreeView", ->
         runs ->
           treeView = atom.packages.getActivePackage("tree-view").mainModule.createView()
           expect(treeView.hasParent()).toBeTruthy()
-          expect(treeView.roots).toHaveLength(2)
+          expect(treeView.roots).toHaveLength(3)
 
     describe "when the project is a .git folder", ->
       it "does not create the tree view", ->
@@ -740,7 +742,7 @@ describe "TreeView", ->
 
       describe "when the last entry of the last directory is selected", ->
         it "does not change the selection", ->
-          lastEntry = root2.find('> .entries .entry:last')
+          lastEntry = root3.find('> .entries .entry:last')
           waitsForFileToOpen ->
             lastEntry.click()
 
@@ -791,6 +793,7 @@ describe "TreeView", ->
         it "does nothing", ->
           atom.commands.dispatch(treeView.roots[0].querySelector(".header"), "tree-view:remove-project-folder")
           atom.commands.dispatch(treeView.roots[0].querySelector(".header"), "tree-view:remove-project-folder")
+          atom.commands.dispatch(treeView.roots[0].querySelector(".header"), "tree-view:remove-project-folder")
           expect(atom.project.getPaths()).toHaveLength(0)
           expect(treeView.element.querySelectorAll('.selected').length).toBe 0
 
@@ -830,17 +833,18 @@ describe "TreeView", ->
 
         expect(treeView.scrollTop()).toBe 0
         atom.commands.dispatch(treeView.element, 'core:move-to-bottom')
-        expect(treeView.scrollBottom()).toBe root1.outerHeight() + root2.outerHeight()
+        expect(treeView.scrollBottom()).toBe root1.outerHeight() + root2.outerHeight() + root3.outerHeight()
 
         treeView.roots[0].collapse()
         treeView.roots[1].collapse()
+        treeView.roots[2].collapse()
         atom.commands.dispatch(treeView.element, 'core:move-to-bottom')
         expect(treeView.scrollTop()).toBe 0
 
       it "selects the last entry", ->
         expect(treeView.roots[0]).toHaveClass 'selected'
         atom.commands.dispatch(treeView.element, 'core:move-to-bottom')
-        expect(root2.find('.entry:last')).toHaveClass 'selected'
+        expect(root3.find('.entry:last')).toHaveClass 'selected'
 
     describe "core:page-up", ->
       it "scrolls up a page", ->
@@ -1109,7 +1113,7 @@ describe "TreeView", ->
     it "removes the folder from the project", ->
       rootHeader = treeView.roots[1].querySelector(".header")
       atom.commands.dispatch(rootHeader, "tree-view:remove-project-folder")
-      expect(atom.project.getPaths()).toHaveLength(1)
+      expect(atom.project.getPaths()).toHaveLength(2)
 
   describe "file modification", ->
     [dirView, dirView2, dirView3, fileView, fileView2, fileView3, fileView4] = []
@@ -2044,6 +2048,16 @@ describe "TreeView", ->
         expect(treeView).toExist()
         root1 = $(treeView.roots[0])
         expect(root1).toHaveClass("collapsed")
+
+  describe "the collapseSourceFiles config option", ->
+    beforeEach ->
+      atom.config.set "tree-view.collapseSourceFiles", false
+    describe "when there the source map file, the source file, and the compiled file are in the same directory", ->
+      it "hides source map and output file from directory", ->
+        expect(root3.find('> ol > .file:contains(test)').length).toBe 3
+        atom.config.set("tree-view.hideVcsIgnoredFiles", true)
+        expect(root3.find('> ol > .file').length).toBe 1
+        expect(root3.find('> ol > .file:contains(.js)').length).toBe 0
 
   describe "the hideVcsIgnoredFiles config option", ->
     describe "when the project's path is the repository's working directory", ->

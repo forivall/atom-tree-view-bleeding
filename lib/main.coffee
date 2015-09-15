@@ -3,6 +3,9 @@ path = require 'path'
 
 module.exports =
   config:
+    collapseSourceFiles:
+      type: 'boolean'
+      default: false
     hideVcsIgnoredFiles:
       type: 'boolean'
       default: false
