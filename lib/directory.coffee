@@ -31,6 +31,8 @@ class Directory
 
     @submodule = repoForPath(@path)?.isSubmodule(@path)
 
+    @sourceMaps = []
+
     @subscribeToRepo()
     @updateStatus()
     @loadRealPath()
@@ -100,6 +102,15 @@ class Directory
       for ignoredPattern in @ignoredPatterns
         return true if ignoredPattern.match(filePath)
 
+    if atom.config.get('tree-view.collapseSourceFiles')
+      basename = path.basename(filePath)
+      isSourceMap = false
+      isOutputFile = false
+      for sourceMap, outputFile of @sourceMappings
+        isSourceMap = true if sourceMap is basename
+        isOutputFile = true if outputFile is basename
+      return true if isSourceMap or isOutputFile
+
     false
 
   # Does given full path start with the given prefix?
@@ -166,6 +177,10 @@ class Directory
     files = []
     directories = []
 
+    sourceMaps = {}
+    if atom.config.get('tree-view.collapseSourceFiles')
+      @sourceMappings = @getSourceMaps(names, @path)
+
     for name in names
       fullPath = path.join(@path, name)
       continue if @isPathIgnored(fullPath)
@@ -191,6 +206,15 @@ class Directory
           files.push(new File({name, fullPath, symlink, realpathCache}))
 
     @sortEntries(directories.concat(files))
+
+  getSourceMaps: (names, dirPath) ->
+    sourceMappings = {}
+    for name in names
+      if /\.map$/.test(name)
+        content = fs.readFileSync(path.resolve(dirPath, name), { encoding: 'utf-8' })
+        sourceMap = JSON.parse(content)
+        sourceMappings[name] = sourceMap.file
+    sourceMappings
 
   normalizeEntryName: (value) ->
     normalizedValue = value.name
