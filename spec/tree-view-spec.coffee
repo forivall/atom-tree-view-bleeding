@@ -2051,13 +2051,16 @@ describe "TreeView", ->
 
   describe "the collapseSourceFiles config option", ->
     beforeEach ->
+      fixture = path.join(__dirname, 'fixtures', 'root-dir3')
+      projectPath = temp.mkdirSync('tree-view-project')
+      fs.copySync(fixture, path.join(projectPath, 'root-dir3'))
       atom.config.set "tree-view.collapseSourceFiles", false
     describe "when there the source map file, the source file, and the compiled file are in the same directory", ->
       it "hides source map and output file from directory", ->
-        expect(root3.find('> ol > .file:contains(test)').length).toBe 3
-        atom.config.set("tree-view.hideVcsIgnoredFiles", true)
-        expect(root3.find('> ol > .file').length).toBe 1
-        expect(root3.find('> ol > .file:contains(.js)').length).toBe 0
+        expect(treeView.find('.directory:contains(root-dir3) > ol > .file:contains(test)').length).toBe 3
+        atom.config.set("tree-view.collapseSourceFiles", true)
+        expect(treeView.find('.directory:contains(root-dir3) > ol > .file:contains(.coffee)').length).toBe 1
+        expect(treeView.find('.directory:contains(root-dir3) > ol > .file:contains(.js)').length).toBe 0
 
   describe "the hideVcsIgnoredFiles config option", ->
     describe "when the project's path is the repository's working directory", ->
