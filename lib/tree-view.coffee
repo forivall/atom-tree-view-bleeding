@@ -378,7 +378,11 @@ class TreeView extends View
     if selectedEntry instanceof DirectoryView
       selectedEntry.toggleExpansion()
     else if selectedEntry instanceof FileView
-      atom.workspace.open(selectedEntry.getPath(), {activatePane})
+      alwaysOpenExisting = atom.config.get('tree-view.alwaysOpenExisting')
+      atom.workspace.open(selectedEntry.getPath(), {
+        activatePane: activatePane or alwaysOpenExisting,
+        searchAllPanes: alwaysOpenExisting
+      })
 
   openSelectedEntrySplit: (orientation, side) ->
     selectedEntry = @selectedEntry()
