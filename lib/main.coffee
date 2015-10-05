@@ -3,6 +3,9 @@ path = require 'path'
 
 module.exports =
   config:
+    collapseSourceFiles:
+      type: 'boolean'
+      default: false
     hideVcsIgnoredFiles:
       type: 'boolean'
       default: false
@@ -16,6 +19,9 @@ module.exports =
     sortFoldersBeforeFiles:
       type: 'boolean'
       default: true
+    alwaysOpenExisting:
+      type: 'boolean'
+      default: false
 
   treeView: null
 
