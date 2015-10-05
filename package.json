@@ -1,6 +1,6 @@
 {
   "name": "tree-view-bleeding",
-  "version": "0.189.1",
+  "version": "0.189.2",
   "main": "./lib/main",
   "description": "Explore and open files in the current project.",
   "repository": "https://github.com/forivall/atom-tree-view-bleeding#bleeding",
