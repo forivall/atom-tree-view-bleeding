@@ -24,7 +24,7 @@ toggleConfig = (keyPath) ->
 module.exports =
 class TreeView extends View
   panel: null
-
+  
   @content: ->
     @div class: 'tree-view-resizer tool-panel', 'data-show-on-right-side': atom.config.get('tree-view.showOnRightSide'), =>
       @div class: 'tree-view-scroller', outlet: 'scroller', =>
@@ -133,6 +133,7 @@ class TreeView extends View
      'tree-view:toggle-vcs-ignored-files': -> toggleConfig 'tree-view.hideVcsIgnoredFiles'
      'tree-view:toggle-ignored-names': -> toggleConfig 'tree-view.hideIgnoredNames'
      'tree-view:remove-project-folder': (e) => @removeProjectFolder(e)
+     'tree-view:refresh-folder-vcs-status': (e) => @refreshVcsStatus(e)
 
     [0..8].forEach (index) =>
       atom.commands.add @element, "tree-view:open-selected-entry-in-pane-#{index + 1}", =>
@@ -154,6 +155,16 @@ class TreeView extends View
       @updateRoots()
     @disposables.add atom.config.onDidChange 'tree-view.collapseSourceFiles', =>
       @updateRoots()
+
+  refreshVcsStatus: (e) ->
+    unless e
+      refreshFrom = $(@list[0]).find('.project-root')
+    else
+      refreshFrom = [@selectedEntry()]
+    for refreshPoint in refreshFrom
+      if refreshPoint?
+        if refreshPoint instanceof DirectoryView
+          refreshPoint.refreshRepoStatus()
 
   toggle: ->
     if @isVisible()

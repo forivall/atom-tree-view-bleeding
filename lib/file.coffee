@@ -12,6 +12,7 @@ class File
 
     @path = fullPath
     @realPath = @path
+    @repo = repoForPath(@path)
 
     extension = path.extname(@path)
     if fs.isReadmePath(@path)
@@ -49,17 +50,16 @@ class File
 
   # Subscribe to the project' repo for changes to the Git status of this file.
   subscribeToRepo: ->
-    repo = repoForPath(@path)
-    return unless repo?
+    return unless @repo?
 
-    @subscriptions.add repo.onDidChangeStatus (event) =>
-      @updateStatus(repo) if @isPathEqual(event.path)
-    @subscriptions.add repo.onDidChangeStatuses =>
-      @updateStatus(repo)
+    @subscriptions.add @repo.onDidChangeStatus (event) =>
+      @updateStatus(@repo) if @isPathEqual(event.path)
+    @subscriptions.add @repo.onDidChangeStatuses =>
+      @updateStatus(@repo)
 
   # Update the status property of this directory using the repo.
-  updateStatus: ->
-    repo = repoForPath(@path)
+  updateStatus: (repo) ->
+    repo ?= @repo
     return unless repo?
 
     newStatus = null

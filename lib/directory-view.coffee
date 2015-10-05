@@ -29,10 +29,11 @@ class DirectoryView extends HTMLElement
       iconClass = 'icon-file-symlink-directory'
     else
       iconClass = 'icon-file-directory'
-      if @directory.isRoot
-        iconClass = 'icon-repo' if repoForPath(@directory.path)?.isProjectAtRoot()
+      relPath = repoForPath(@directory.path)?.relativize(@directory.path + '/')?.length
+      if relPath is 0
+        iconClass = 'icon-repo'
       else
-        iconClass = 'icon-file-submodule' if @directory.submodule
+        iconClass = 'icon-file-submodule' if not @directory.isRoot and @directory.submodule
     @directoryName.classList.add(iconClass)
     @directoryName.textContent = @directory.name
     @directoryName.dataset.name = @directory.name
@@ -92,6 +93,13 @@ class DirectoryView extends HTMLElement
 
   reload: ->
     @directory.reload() if @isExpanded
+
+  refreshRepoStatus: (isRecursive=true) ->
+    @directory.refreshRepoStatus()
+    
+    if isRecursive
+      for entry in @entries.children when entry instanceof DirectoryView
+        entry.refreshRepoStatus(true)
 
   toggleExpansion: (isRecursive=false) ->
     if @isExpanded then @collapse(isRecursive) else @expand(isRecursive)
