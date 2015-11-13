@@ -27,7 +27,7 @@ class TreeView extends View
 
   @content: ->
     @div class: 'tree-view-resizer tool-panel', 'data-show-on-right-side': atom.config.get('tree-view.showOnRightSide'), =>
-      @div class: 'tree-view-scroller', outlet: 'scroller', =>
+      @div class: 'tree-view-scroller order--center', outlet: 'scroller', =>
         @ol class: 'tree-view full-menu list-tree has-collapsable-children focusable-panel', tabindex: -1, outlet: 'list'
       @div class: 'tree-view-resize-handle', outlet: 'resizeHandle'
 
@@ -152,7 +152,7 @@ class TreeView extends View
       @onSideToggled(newValue)
     @disposables.add atom.config.onDidChange 'tree-view.sortFoldersBeforeFiles', =>
       @updateRoots()
-    @disposables.add atom.config.onDidChange 'tree-view.collapseSourceFiles', =>
+    @disposables.add atom.config.onDidChange 'tree-view.squashDirectoryNames', =>
       @updateRoots()
 
   toggle: ->
@@ -212,7 +212,7 @@ class TreeView extends View
       when 2
         if entry instanceof FileView
           @unfocus()
-        else if DirectoryView
+        else if entry instanceof DirectoryView
           entry.toggleExpansion(isRecursive)
 
     false
@@ -532,6 +532,8 @@ class TreeView extends View
         "Move to Trash": ->
           for selectedPath in selectedPaths
             shell.moveItemToTrash(selectedPath)
+            if repo = repoForPath(selectedPath)
+              repo.getPathStatus(selectedPath)
         "Cancel": null
 
   # Public: Copy the path of the selected entry element.
@@ -606,7 +608,7 @@ class TreeView extends View
         else if cutPaths
           # Only move the target if the cut target doesn't exists and if the newPath
           # is not within the initial path
-          unless fs.existsSync(newPath) or !!newPath.match(new RegExp("^#{initialPath}"))
+          unless fs.existsSync(newPath) or newPath.startsWith(initialPath)
             catchAndShowFileErrors -> fs.moveSync(initialPath, newPath)
 
   add: (isCreatingFile) ->
@@ -705,7 +707,7 @@ class TreeView extends View
     # Force a redraw so the scrollbars are styled correctly based on the theme
     @element.style.display = 'none'
     @element.offsetWidth
-    @element.style.display = 'block'
+    @element.style.display = ''
 
   onMouseDown: (e) ->
     e.stopPropagation()
@@ -827,7 +829,7 @@ class TreeView extends View
     e.originalEvent.dataTransfer.setDragImage(fileNameElement[0], 0, 0)
     e.originalEvent.dataTransfer.setData("initialPath", initialPath)
 
-    window.requestAnimationFrame =>
+    window.requestAnimationFrame ->
       fileNameElement.remove()
 
     @projectFolderDragAndDropHandler.onDragStart(e)
