@@ -23,3 +23,39 @@ module.exports.buildDragEvents = (dragged, enterTarget, dropTarget) ->
   dragEnterEvent.originalEvent = {dataTransfer}
 
   [dragStartEvent, dragEnterEvent, dropEvent]
+
+buildElementPositionalDragEvents = (el, dataTransfer) ->
+  if not el?
+    return {}
+  $el = $(el)
+  topEvent = $.Event()
+  topEvent.target = el
+  topEvent.currentTarget = el
+  topEvent.originalEvent = {dataTransfer, pageY: $el.offset().top}
+
+  middleEvent = $.Event()
+  middleEvent.target = el
+  middleEvent.currentTarget = el
+  middleEvent.originalEvent = {dataTransfer, pageY: $el.offset().top + $el.height() * 0.5}
+
+  bottomEvent = $.Event()
+  bottomEvent.target = el
+  bottomEvent.currentTarget = el
+  bottomEvent.originalEvent = {dataTransfer, pageY: $el.offset().bottom}
+
+  {top: topEvent, middle: middleEvent, bottom: bottomEvent}
+
+
+module.exports.buildPositionalDragEvents = (dragged, target) ->
+  dataTransfer =
+    data: {}
+    setData: (key, value) -> @data[key] = "#{value}" # Drag events stringify data values
+    getData: (key) -> @data[key]
+    setDragImage: (@image) -> return
+
+  dragStartEvent = $.Event()
+  dragStartEvent.target = dragged
+  dragStartEvent.currentTarget = dragged
+  dragStartEvent.originalEvent = {dataTransfer}
+
+  [dragStartEvent, buildElementPositionalDragEvents(target, dataTransfer)]

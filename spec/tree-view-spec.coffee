@@ -4,7 +4,7 @@ fs = require 'fs-plus'
 path = require 'path'
 temp = require('temp').track()
 os = require 'os'
-{buildDragEvents} = require "./event-helpers"
+{buildDragEvents, buildPositionalDragEvents} = require "./event-helpers"
 
 waitsForFileToOpen = (causeFileToOpen) ->
   waitsFor (done) ->
@@ -2960,3 +2960,168 @@ describe "TreeView", ->
               item = atom.workspace.getActivePaneItem()
               expect(atom.views.getView(firstPane)).toHaveFocus()
               expect(item.getPath()).toBe atom.project.getDirectories()[0].resolve(fileName)
+
+
+  describe "Dragging and dropping root folders", ->
+    [alphaDirPath, gammaDirPath, thetaDirPath, etaDirPath] = []
+    beforeEach ->
+      rootDirPath = fs.absolute(temp.mkdirSync('tree-view'))
+
+      alphaFilePath = path.join(rootDirPath, "alpha.txt")
+      zetaFilePath = path.join(rootDirPath, "zeta.txt")
+
+      alphaDirPath = path.join(rootDirPath, "alpha")
+      betaFilePath = path.join(alphaDirPath, "beta.txt")
+
+      gammaDirPath = path.join(rootDirPath, "gamma")
+      deltaFilePath = path.join(gammaDirPath, "delta.txt")
+      epsilonFilePath = path.join(gammaDirPath, "epsilon.txt")
+
+      thetaDirPath = path.join(rootDirPath, "theta")
+      etaDirPath = path.join(rootDirPath, "eta")
+
+      fs.writeFileSync(alphaFilePath, "doesn't matter")
+      fs.writeFileSync(zetaFilePath, "doesn't matter")
+
+      fs.makeTreeSync(alphaDirPath)
+      fs.writeFileSync(betaFilePath, "doesn't matter")
+
+      fs.makeTreeSync(gammaDirPath)
+      fs.writeFileSync(deltaFilePath, "doesn't matter")
+      fs.writeFileSync(epsilonFilePath, "doesn't matter")
+      fs.makeTreeSync(thetaDirPath)
+      fs.makeTreeSync(etaDirPath)
+
+      atom.project.setPaths([alphaDirPath, gammaDirPath, thetaDirPath])
+
+      jasmine.attachToDOM(workspaceElement)
+
+    afterEach ->
+      [alphaDirPath, gammaDirPath, thetaDirPath, etaDirPath] = []
+
+    describe "when dragging a project root's header onto a different project root's header", ->
+      describe "when dragging on the top part of the header", ->
+        it "should add the placeholder above the directory", ->
+          # Dragging gammaDir onto alphaDir
+          alphaDir = $(treeView).find('.project-root:contains(alpha):first')
+          gammaDir = $(treeView).find('.project-root:contains(gamma):first')
+          [dragStartEvent, dragOverEvents] = buildPositionalDragEvents(gammaDir.find('.project-root-header')[0], alphaDir.find('.project-root-header')[0])
+
+          treeView.onDragStart(dragStartEvent)
+          treeView.onDragOver(dragOverEvents.top)
+          expect(alphaDir[0].previousSibling).toHaveClass('placeholder')
+
+          # Is removed when drag ends
+          treeView.projectFolderDragAndDropHandler.onDragEnd()
+          expect('.placeholder').not.toExist()
+
+      describe "when dragging on the middle part of the header", ->
+        it "should not add the placeholder", ->
+          # Dragging gammaDir onto alphaDir
+          alphaDir = $(treeView).find('.project-root:contains(alpha):first')
+          gammaDir = $(treeView).find('.project-root:contains(gamma):first')
+          [dragStartEvent, dragOverEvents] = buildPositionalDragEvents(gammaDir.find('.project-root-header')[0], alphaDir.find('.project-root-header')[0])
+
+          treeView.onDragStart(dragStartEvent)
+          treeView.onDragEnter(dragOverEvents.middle)
+          treeView.onDragOver(dragOverEvents.middle)
+          expect(alphaDir).toHaveClass('selected')
+          expect('.placeholder').not.toExist()
+
+          # Is removed when drag ends
+          treeView.projectFolderDragAndDropHandler.onDragEnd()
+          expect('.placeholder').not.toExist()
+
+      describe "when dragging on the bottom part of the header", ->
+        it "should add the placeholder below the directory", ->
+          # Dragging gammaDir onto alphaDir
+          alphaDir = $(treeView).find('.project-root:contains(alpha):first')
+          gammaDir = $(treeView).find('.project-root:contains(gamma):first')
+          [dragStartEvent, dragOverEvents] = buildPositionalDragEvents(gammaDir.find('.project-root-header')[0], alphaDir.find('.project-root-header')[0])
+
+          treeView.onDragStart(dragStartEvent)
+          treeView.onDragOver(dragOverEvents.bottom)
+          expect(alphaDir[0].nextSibling).toHaveClass('placeholder')
+
+          # Is removed when drag ends
+          treeView.projectFolderDragAndDropHandler.onDragEnd()
+          expect('.placeholder').not.toExist()
+
+    describe "when dropping a project root's header onto a different project root's header", ->
+      describe "when dropping on the top part of the header", ->
+        it "should add the placeholder above the directory", ->
+          # dropping gammaDir above alphaDir
+          alphaDir = $(treeView).find('.project-root:contains(alpha):first')
+          gammaDir = $(treeView).find('.project-root:contains(gamma):first')
+          [dragStartEvent, dragDropEvents] = buildPositionalDragEvents(gammaDir.find('.project-root-header')[0], alphaDir.find('.project-root-header')[0])
+
+          treeView.onDragStart(dragStartEvent)
+          treeView.onDrop(dragDropEvents.top)
+          projectPaths = atom.project.getPaths()
+          expect(projectPaths[0]).toEqual(gammaDirPath);
+          expect(projectPaths[1]).toEqual(alphaDirPath);
+
+          # Is removed when drag ends
+          expect('.placeholder').not.toExist()
+
+      describe "when dropping on the bottom part of the header", ->
+        it "should add the placeholder below the directory", ->
+          # dropping thetaDir below alphaDir
+          alphaDir = $(treeView).find('.project-root:contains(alpha):first')
+          thetaDir = $(treeView).find('.project-root:contains(theta):first')
+          [dragStartEvent, dragDropEvents] = buildPositionalDragEvents(thetaDir.find('.project-root-header')[0], alphaDir.find('.project-root-header')[0])
+
+          treeView.onDragStart(dragStartEvent)
+          treeView.onDrop(dragDropEvents.bottom)
+          projectPaths = atom.project.getPaths()
+          expect(projectPaths[0]).toEqual(alphaDirPath);
+          expect(projectPaths[1]).toEqual(thetaDirPath);
+          expect(projectPaths[2]).toEqual(gammaDirPath);
+
+          # Is removed when drag ends
+          expect('.placeholder').not.toExist()
+
+    describe "when a root folder is dragged out of application", ->
+      it "should carry the folder's information", ->
+        gammaDir = $(treeView).find('.project-root:contains(gamma):first')
+        [dragStartEvent] = buildPositionalDragEvents(gammaDir.find('.project-root-header')[0])
+        treeView.onDragStart(dragStartEvent)
+
+        expect(dragStartEvent.originalEvent.dataTransfer.getData("text/plain")).toEqual gammaDirPath
+        if process.platform in ['darwin', 'linux']
+          expect(dragStartEvent.originalEvent.dataTransfer.getData("text/uri-list")).toEqual "file://#{gammaDirPath}"
+
+    describe "when a root folder is dropped from another Atom window", ->
+      it "adds the root folder to the window", ->
+        alphaDir = $(treeView).find('.project-root:contains(alpha):first')
+        [_, dragDropEvents] = buildPositionalDragEvents(null, alphaDir.find('.project-root-header')[0])
+
+        dropEvent = dragDropEvents.bottom
+        dropEvent.originalEvent.dataTransfer.setData('atom-event', true)
+        dropEvent.originalEvent.dataTransfer.setData('from-window-id', treeView.projectFolderDragAndDropHandler.getWindowId() + 1)
+        dropEvent.originalEvent.dataTransfer.setData('from-root-path', etaDirPath)
+
+        # mock browserWindowForId
+        browserWindowMock = {webContents: {send: ->}}
+        treeView.projectFolderDragAndDropHandler.browserWindowForId = -> browserWindowMock
+        spyOn(browserWindowMock.webContents, 'send')
+
+        treeView.onDrop(dropEvent)
+
+        waitsFor ->
+          browserWindowMock.webContents.send.callCount > 0
+
+        runs ->
+          expect(atom.project.getPaths()).toContain etaDirPath
+          expect('.placeholder').not.toExist()
+
+
+    describe "when a root folder is dropped to another Atom window", ->
+      it "removes the root folder from the first window", ->
+        gammaDir = $(treeView).find('.project-root:contains(gamma):first')
+        [dragStartEvent, dropEvent] = buildPositionalDragEvents(gammaDir.find('.project-root-header')[0])
+        treeView.onDragStart(dragStartEvent)
+        treeView.projectFolderDragAndDropHandler.onDropOnOtherWindow(gammaDir.index())
+
+        expect(atom.project.getPaths()).toEqual [alphaDirPath, thetaDirPath]
+        expect('.placeholder').not.toExist()
