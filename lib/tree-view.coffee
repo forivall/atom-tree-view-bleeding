@@ -1,4 +1,5 @@
 path = require 'path'
+ChildProcess = require 'child_process'
 {shell} = require 'electron'
 
 _ = require 'underscore-plus'
@@ -734,8 +735,13 @@ class TreeView extends View
     newPath = "#{newDirectoryPath}/#{entryName}".replace(/\s+$/, '')
 
     try
-      fs.makeTreeSync(newDirectoryPath) unless fs.existsSync(newDirectoryPath)
-      fs.moveSync(initialPath, newPath)
+      if (initialRepo = repoForPath(initialPath)) and (newRepo = repoForPath(newDirectoryPath)) and initialRepo.path is newRepo.path
+        {status, stderr} = ChildProcess.spawnSync('git', ['mv', initialPath, newPath], {cwd: initialRepo.getWorkingDirectory()})
+        if status isnt 0
+          throw new Error(stderr)
+      else
+        fs.makeTreeSync(newDirectoryPath) unless fs.existsSync(newDirectoryPath)
+        fs.moveSync(initialPath, newPath)
 
       if repo = repoForPath(newPath)
         repo.getPathStatus(initialPath)
